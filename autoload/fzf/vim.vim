@@ -533,14 +533,31 @@ function! s:get_git_root()
   return v:shell_error ? '' : root
 endfunction
 
+function! s:get_git_superroot()
+  let superroot = ''
+  let superroot_result = system('git rev-parse --show-superproject-working-tree 2> /dev/null')
+  if superroot_result != ''
+    let superroot = split(superroot_result, '\n')[0]
+  endif
+
+  if superroot == ''
+    let root = split(system('git rev-parse --show-toplevel'), '\n')[0]
+    return v:shell_error ? '' : root
+  else
+    return superroot
+  endif
+endfunction
+
 function! fzf#vim#gitfiles(args, ...)
-  let root = s:get_git_root()
+  let recursive = 1
+  let root = recursive ? s:get_git_superroot() : get_git_root()
   if empty(root)
     return s:warn('Not in git repo')
   endif
   if a:args != '?'
+    let option = recursive ? '--recurse-submodules' : ''
     return s:fzf('gfiles', {
-    \ 'source':  'git ls-files '.a:args.(s:is_win ? '' : ' | uniq'),
+    \ 'source':  'git ls-files '.option.' '.a:args.(s:is_win ? '' : ' | uniq'),
     \ 'dir':     root,
     \ 'options': '-m --prompt "GitFiles> "'
     \}, a:000)
